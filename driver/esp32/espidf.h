@@ -5,6 +5,7 @@
 #if __has_include("esp_idf_version.h")
 #   include "esp_idf_version.h"
 #endif
+#   include "sdkconfig.h"
 
 // Disable some macros and includes that make pycparser choke
 
@@ -82,8 +83,8 @@ void * memset ( void * ptr, int value, size_t num );
 
 static inline void SPH0645_WORKAROUND(int i2s_num)
 {
-    REG_SET_BIT( I2S_TIMING_REG(i2s_num), BIT(9));
-    REG_SET_BIT( I2S_CONF_REG(i2s_num), I2S_RX_MSB_SHIFT);
+    REG_SET_BIT( I2S_RX_TIMING_REG(i2s_num), BIT(9));
+    REG_SET_BIT( I2S_RX_CONF_REG(i2s_num), I2S_RX_MSB_SHIFT);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +107,7 @@ static inline void get_ccount(int *ccount)
 #   elif CONFIG_IDF_TARGET_ESP32S2
 #   include "esp32s2/clk.h"
 #   elif CONFIG_IDF_TARGET_ESP32S3
-#   include "esp32s3/clk.h"
+//#   include "esp32s3/clk.h"
 #   elif CONFIG_IDF_TARGET_ESP32C3
 #   include "esp32c3/clk.h"
 #   elif CONFIG_IDF_TARGET_ESP32H2
@@ -123,11 +124,11 @@ static inline void get_ccount(int *ccount)
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "driver/adc.h"
-#include "driver/i2s.h"
-#include "driver/pcnt.h"
+#include "driver/i2s_std.h"
+#include "driver/pulse_cnt.h"
 #include "mdns.h"
 #include "esp_http_client.h"
-#include "sh2lib.h"
+//#include "sh2lib.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // Helper function to register HTTP event handler
@@ -177,18 +178,14 @@ void ex_spi_post_cb_isr(spi_transaction_t *trans);
 #if defined(ESP_IDF_VERSION_MAJOR) && ESP_IDF_VERSION_MAJOR >= 4
 // SPI HOST enum was changed to macros on v4
 enum {
-    ENUM_SPI_HOST = SPI_HOST,
-    ENUM_HSPI_HOST = HSPI_HOST,
-    ENUM_VSPI_HOST = VSPI_HOST,
+    ENUM_SPI_HOST = SPI1_HOST,
+    ENUM_HSPI_HOST = SPI2_HOST ,
+    ENUM_VSPI_HOST = SPI3_HOST ,
 };
 #endif
 
 enum {
     ENUM_portMAX_DELAY = portMAX_DELAY
-};
-
-enum {
-    ENUM_I2S_PIN_NO_CHANGE = I2S_PIN_NO_CHANGE
 };
 
 enum {

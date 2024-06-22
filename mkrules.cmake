@@ -128,6 +128,8 @@ function(all_lv_bindings)
                 soc/sens_struct.h
                 soc/rtc.h
                 driver/periph_ctrl.h
+                esp_hw_support/include/esp_etm.h
+                driver/gpio/include/driver/gpio_etm.h
         )
     endif(ESP_PLATFORM)
 
@@ -148,8 +150,8 @@ set(LV_SRC
 if(ESP_PLATFORM)
     LIST(APPEND LV_SRC
         ${LV_BINDINGS_DIR}/driver/esp32/espidf.c
-        ${LV_BINDINGS_DIR}/driver/esp32/modrtch.c
-        ${LV_BINDINGS_DIR}/driver/esp32/sh2lib.c
+        #${LV_BINDINGS_DIR}/driver/esp32/modrtch.c
+        #${LV_BINDINGS_DIR}/driver/esp32/sh2lib.c
         ${LV_ESPIDF}
     )
 endif(ESP_PLATFORM)

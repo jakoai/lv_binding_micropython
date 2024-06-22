@@ -23,6 +23,8 @@
 #include "driver/adc_deprecated.h"
 #endif
 
+#include "esp_private/adc_share_hw_ctrl.h"
+
 
 //////////////////////////////////////////////////////////////////////////////
 // Constants 
@@ -98,16 +100,16 @@ typedef struct _rtch_t
     uint32_t touch_samples_threshold; // max distance between touch sample measurements for a valid touch reading
 
     rtch_info_t rtch_info;
-    xTaskHandle rtch_task_handle;
+    TaskHandle_t rtch_task_handle;
     SemaphoreHandle_t rtch_info_mutex;
 } rtch_t;
 
 
 // Unfortunately, lvgl doesn't pass user_data to callbacks, so we use this global.
 // This means we can have only one active touch driver instance, pointed by this global.
-STATIC rtch_t *g_rtch = NULL;
+static rtch_t *g_rtch = NULL;
 
-STATIC void touch_read(lv_indev_t * indev_drv, lv_indev_data_t *data)
+static void touch_read(lv_indev_t * indev_drv, lv_indev_data_t *data)
 {
     rtch_info_t *touch_info = &g_rtch->rtch_info;
     xSemaphoreTake(g_rtch->rtch_info_mutex, portMAX_DELAY);
@@ -116,29 +118,29 @@ STATIC void touch_read(lv_indev_t * indev_drv, lv_indev_data_t *data)
     xSemaphoreGive(g_rtch->rtch_info_mutex);
 }
 
-STATIC mp_obj_t mp_activate_rtch(mp_obj_t self_in)
+static mp_obj_t mp_activate_rtch(mp_obj_t self_in)
 {
     rtch_t *self = MP_OBJ_TO_PTR(self_in);
     g_rtch = self;
     return mp_const_none;
 }
 
-STATIC mp_obj_t rtch_make_new(const mp_obj_type_t *type,
+static mp_obj_t rtch_make_new(const mp_obj_type_t *type,
                                  size_t n_args,
                                  size_t n_kw,
                                  const mp_obj_t *all_args);
 
-STATIC mp_obj_t mp_rtch_init(mp_obj_t self_in);
-STATIC mp_obj_t mp_rtch_deinit(mp_obj_t self_in);
-STATIC mp_obj_t calibrate(mp_uint_t n_args, const mp_obj_t *args);
+static mp_obj_t mp_rtch_init(mp_obj_t self_in);
+static mp_obj_t mp_rtch_deinit(mp_obj_t self_in);
+static mp_obj_t calibrate(mp_uint_t n_args, const mp_obj_t *args);
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mp_init_rtch_obj, mp_rtch_init);
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mp_deinit_rtch_obj, mp_rtch_deinit);
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mp_activate_rtch_obj, mp_activate_rtch);
+static MP_DEFINE_CONST_FUN_OBJ_1(mp_init_rtch_obj, mp_rtch_init);
+static MP_DEFINE_CONST_FUN_OBJ_1(mp_deinit_rtch_obj, mp_rtch_deinit);
+static MP_DEFINE_CONST_FUN_OBJ_1(mp_activate_rtch_obj, mp_activate_rtch);
 DEFINE_PTR_OBJ(touch_read);
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(calibrate_obj, 5, 5, calibrate);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(calibrate_obj, 5, 5, calibrate);
 
-STATIC const mp_rom_map_elem_t rtch_locals_dict_table[] = {
+static const mp_rom_map_elem_t rtch_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&mp_init_rtch_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&mp_deinit_rtch_obj) },
     { MP_ROM_QSTR(MP_QSTR_activate), MP_ROM_PTR(&mp_activate_rtch_obj) },
@@ -146,9 +148,9 @@ STATIC const mp_rom_map_elem_t rtch_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_calibrate), MP_ROM_PTR(&calibrate_obj) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(rtch_locals_dict, rtch_locals_dict_table);
+static MP_DEFINE_CONST_DICT(rtch_locals_dict, rtch_locals_dict_table);
 
-STATIC MP_DEFINE_CONST_OBJ_TYPE(
+static MP_DEFINE_CONST_OBJ_TYPE(
     rtch_type,
     MP_QSTR_rtch,
     MP_TYPE_FLAG_NONE,
@@ -157,13 +159,13 @@ STATIC MP_DEFINE_CONST_OBJ_TYPE(
     locals_dict, (mp_obj_dict_t*)&rtch_locals_dict
 );
 
-STATIC const mp_rom_map_elem_t rtch_globals_table[] = {
+static const mp_rom_map_elem_t rtch_globals_table[] = {
         { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_rtch) },
         { MP_ROM_QSTR(MP_QSTR_touch), (mp_obj_t)&rtch_type},
 };
          
 
-STATIC MP_DEFINE_CONST_DICT (
+static MP_DEFINE_CONST_DICT (
     mp_module_rtch_globals,
     rtch_globals_table
 );
@@ -175,7 +177,7 @@ const mp_obj_module_t mp_module_rtch = {
 
 MP_REGISTER_MODULE(MP_QSTR_rtch, mp_module_rtch);
 
-STATIC mp_obj_t rtch_make_new(const mp_obj_type_t *type,
+static mp_obj_t rtch_make_new(const mp_obj_type_t *type,
                                  size_t n_args,
                                  size_t n_kw,
                                  const mp_obj_t *all_args)
@@ -245,7 +247,7 @@ STATIC mp_obj_t rtch_make_new(const mp_obj_type_t *type,
     return MP_OBJ_FROM_PTR(self);
 }
 
-STATIC mp_obj_t calibrate(mp_uint_t n_args, const mp_obj_t *args)
+static mp_obj_t calibrate(mp_uint_t n_args, const mp_obj_t *args)
 {
     (void)n_args; // unused, we know it's 5
     rtch_t *self = MP_OBJ_TO_PTR(args[0]);
@@ -261,9 +263,9 @@ STATIC mp_obj_t calibrate(mp_uint_t n_args, const mp_obj_t *args)
 //////////////////////////////////////////////////////////////////////////////
 
 
-STATIC void rtch_task(void* arg);
+static void rtch_task(void* arg);
 
-STATIC void enable_touch_sense(rtch_t *self)
+static void enable_touch_sense(rtch_t *self)
 {
     // Configure all touch pins to high impedance (input)
 
@@ -287,7 +289,7 @@ STATIC void enable_touch_sense(rtch_t *self)
     // Configure touch sense and configure interrupt
 
     gpio_config(&(gpio_config_t){
-        .intr_type = GPIO_PIN_INTR_POSEDGE,
+        .intr_type = GPIO_INTR_POSEDGE,
         .mode = GPIO_MODE_INPUT,
         .pull_down_en = 1,
         .pin_bit_mask = (1ULL<<self->touch_sense),
@@ -295,10 +297,10 @@ STATIC void enable_touch_sense(rtch_t *self)
 
     // Wait for touch rail to stabilize
 
-    vTaskDelay(RTCH_TOUCH_WAIT_MS / portTICK_RATE_MS);
+    vTaskDelay(RTCH_TOUCH_WAIT_MS / portTICK_PERIOD_MS);
 }
 
-STATIC mp_obj_t mp_rtch_init(mp_obj_t self_in)
+static mp_obj_t mp_rtch_init(mp_obj_t self_in)
 {
     rtch_t *self = MP_OBJ_TO_PTR(self_in);
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
@@ -307,7 +309,6 @@ STATIC mp_obj_t mp_rtch_init(mp_obj_t self_in)
 
     self->rtch_info_mutex = xSemaphoreCreateMutex();
 
-    adc_power_on();
     enable_touch_sense(self);
 
     // Install Interrupt
@@ -329,11 +330,10 @@ STATIC mp_obj_t mp_rtch_init(mp_obj_t self_in)
     return mp_const_none;
 }
 
-STATIC mp_obj_t mp_rtch_deinit(mp_obj_t self_in)
+static mp_obj_t mp_rtch_deinit(mp_obj_t self_in)
 {
     rtch_t *self = MP_OBJ_TO_PTR(self_in);
     vTaskDelete(self->rtch_task_handle);
-    adc_power_off();
     gpio_isr_handler_remove(self->touch_sense);
 
     // Configure all touch pins to high impedance (input)
@@ -352,14 +352,14 @@ STATIC mp_obj_t mp_rtch_deinit(mp_obj_t self_in)
     return mp_const_none;
 }
 
-STATIC int compare_int(const void *_a, const void *_b)
+static int compare_int(const void *_a, const void *_b)
 {
     int *a = (int*)_a;
     int *b = (int*)_b;
     return *a - *b;
 }
 
-STATIC int measure_axis(
+static int measure_axis(
         rtch_t *self,
         gpio_num_t plus,
         gpio_num_t minus,
@@ -372,11 +372,11 @@ STATIC int measure_axis(
     gpio_set_level(self->touch_rail, 1);
 
     // - Float "ignore" and "measure"
-    gpio_pad_select_gpio(ignore);
+    esp_rom_gpio_pad_select_gpio(ignore);
     gpio_set_direction(ignore, GPIO_MODE_DISABLE);
     gpio_set_pull_mode(ignore, GPIO_FLOATING);
 
-    gpio_pad_select_gpio(measure);
+    esp_rom_gpio_pad_select_gpio(measure);
     gpio_set_direction(measure, GPIO_MODE_DISABLE);
     gpio_set_pull_mode(measure, GPIO_FLOATING);
 
@@ -392,11 +392,10 @@ STATIC int measure_axis(
 
     adc1_channel_t adc_channel = gpio_to_adc[measure];
 
-    adc_gpio_init(ADC_UNIT_1, adc_channel);
     adc1_config_width(ADC_WIDTH_BIT_12);
     adc1_config_channel_atten(adc_channel,ADC_ATTEN_DB_11);
 
-    vTaskDelay(RTCH_INIT_ADC_WAIT_MS / portTICK_RATE_MS);
+    vTaskDelay(RTCH_INIT_ADC_WAIT_MS / portTICK_PERIOD_MS);
 
     // Collect ADC samples and sort them
 
@@ -404,7 +403,7 @@ STATIC int measure_axis(
     int sample_count = self->touch_samples;
     for (int i=0; i<sample_count; i++)
     {
-        //vTaskDelay(RTCH_SAMPLE_WAIT_MS / portTICK_RATE_MS);
+        //vTaskDelay(RTCH_SAMPLE_WAIT_MS / portTICK_PERIOD_MS);
         samples[i] = adc1_get_raw(adc_channel);
     }
     qsort(samples, sample_count, sizeof(samples[0]), compare_int);
@@ -428,7 +427,7 @@ STATIC int measure_axis(
     return samples[sample_count / 2];
 }
 
-STATIC void IRAM_ATTR rtch_isr_handler(void* arg)
+static void IRAM_ATTR rtch_isr_handler(void* arg)
 {
     rtch_t *self = (rtch_t*)arg;
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -449,7 +448,7 @@ STATIC void IRAM_ATTR rtch_isr_handler(void* arg)
 }
 
 
-STATIC void rtch_task(void* arg)
+static void rtch_task(void* arg)
 {
     rtch_t *self = (rtch_t*)arg;
 

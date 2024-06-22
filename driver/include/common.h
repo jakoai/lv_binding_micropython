@@ -16,7 +16,7 @@ typedef struct mp_ptr_t
     void *ptr;
 } mp_ptr_t;
 
-STATIC mp_int_t mp_ptr_get_buffer(mp_obj_t self_in, mp_buffer_info_t *bufinfo, mp_uint_t flags)
+static mp_int_t mp_ptr_get_buffer(mp_obj_t self_in, mp_buffer_info_t *bufinfo, mp_uint_t flags)
 {
     mp_ptr_t *self = MP_OBJ_TO_PTR(self_in);
 
@@ -34,7 +34,7 @@ STATIC mp_int_t mp_ptr_get_buffer(mp_obj_t self_in, mp_buffer_info_t *bufinfo, m
 #define PTR_OBJ(ptr_global) ptr_global ## _obj
 
 #define DEFINE_PTR_OBJ_TYPE(ptr_obj_type, ptr_type_qstr)\
-STATIC MP_DEFINE_CONST_OBJ_TYPE(\
+static MP_DEFINE_CONST_OBJ_TYPE(\
     ptr_obj_type,\
     ptr_type_qstr,\
     MP_TYPE_FLAG_NONE,\
@@ -43,7 +43,7 @@ STATIC MP_DEFINE_CONST_OBJ_TYPE(\
 
 #define DEFINE_PTR_OBJ(ptr_global)\
 DEFINE_PTR_OBJ_TYPE(ptr_global ## _type, MP_QSTR_ ## ptr_global);\
-STATIC const mp_ptr_t PTR_OBJ(ptr_global) = {\
+static const mp_ptr_t PTR_OBJ(ptr_global) = {\
     { &ptr_global ## _type },\
     &ptr_global\
 }

@@ -8,24 +8,35 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
-#include "soc/cpu.h"
+#include "esp_cpu.h"
+
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#include <esp32/rom/ets_sys.h>
+#elif defined(CONFIG_IDF_TARGET_ESP32C3)
+#include <esp32c3/rom/ets_sys.h>
+#elif defined(CONFIG_IDF_TARGET_ESP32S2)
+#include <esp32s2/rom/ets_sys.h>
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#include <esp32s3/rom/ets_sys.h>
+#endif
+
 
 
 // ESP IDF has some functions that are declared but not implemented.
 // To avoid linking errors, provide empty implementation
 
 inline void gpio_pin_wakeup_disable(void){}
-inline void gpio_pin_wakeup_enable(uint32_t i, GPIO_INT_TYPE intr_state){}
+inline void gpio_pin_wakeup_enable(uint32_t i, gpio_int_type_t intr_state){}
 inline void gpio_intr_ack_high(uint32_t ack_mask){}
 inline void gpio_intr_ack(uint32_t ack_mask){}
 inline uint32_t gpio_intr_pending_high(void){return 0;}
 inline uint32_t gpio_intr_pending(void){return 0;}
-inline void gpio_intr_handler_register(gpio_intr_handler_fn_t fn, void *arg){}
+inline void gpio_intr_handler_register(gpio_isr_handle_t fn, void *arg){}
 inline void gpio_init(void){}
 
 void task_delay_ms(int ms)
 {
-    vTaskDelay(ms / portTICK_RATE_MS);
+    vTaskDelay(ms / portTICK_PERIOD_MS);
 }
 
 // ISR callbacks handling
@@ -49,7 +60,7 @@ void *spi_transaction_set_cb(mp_obj_t pre_cb, mp_obj_t post_cb)
     return callbacks;
 }
 
-STATIC void isr_print_strn(void *env, const char *str, size_t len) {
+static void isr_print_strn(void *env, const char *str, size_t len) {
     size_t i;
     (void)env;
     for (i=0; i<len; i++) ets_write_char_uart(str[i]);
@@ -57,6 +68,12 @@ STATIC void isr_print_strn(void *env, const char *str, size_t len) {
 
 static const mp_print_t mp_isr_print = {NULL, isr_print_strn};
 
+
+static inline uintptr_t get_sp(void) {
+    uintptr_t result;
+    __asm__ ("mov %0, sp\n" : "=r" (result));
+    return result;
+}
 // Called in ISR context!
 //
 static inline void cb_isr(mp_obj_t cb, mp_obj_t arg)
@@ -73,7 +90,7 @@ static inline void cb_isr(mp_obj_t cb, mp_obj_t arg)
         mp_state_thread_t ts; // local thread state for the ISR
         mp_thread_set_state(&ts);
         mp_stack_set_top((void*)sp); // need to include in root-pointer scan
-        mp_stack_set_limit(configIDLE_TASK_STACK_SIZE - 1024); // tune based on ISR thread stack size
+        mp_stack_set_limit(CONFIG_FREERTOS_IDLE_TASK_STACKSIZE - 1024); // tune based on ISR thread stack size
         mp_locals_set(mp_state_ctx.thread.dict_locals); // use main thread's locals
         mp_globals_set(mp_state_ctx.thread.dict_globals); // use main thread's globals
 
